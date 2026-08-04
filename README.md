@@ -1,6 +1,6 @@
-# CER Data and Code Availability Policy
+# China Economic Review — Data and Code Availability Policy
 
-Public repository for the **China Economic Review** Data and Code Availability Policy, associated templates, and Claude Code skills for replication package verification.
+The official data availability policy, replication package requirements, and verification tools for the **China Economic Review (CER)**. This repository contains the CER Data and Code Availability Policy (v2), compliance checklist, frequently asked questions, and Claude Code skills for automated README checking and replication package verification. Aligned with the Data and Code Availability Standard (DCAS) and the Social Science Data Editors' Template README.
 
 ## Contents
 
