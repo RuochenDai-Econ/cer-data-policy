@@ -105,3 +105,7 @@ The same Tier-2 documentation requirements apply. Your README must provide the i
 
 ---
 
+**Q14: How can I check whether my README meets the CER requirements before submission?**
+
+You can use the CER self-check tools published on our GitHub repository: **https://github.com/RuochenDai-Econ/cer-data-policy**. If you have access to Claude Code (or a similar AI coding assistant that supports skills), simply download the `cer-readme-check` skill from the repository and run it on your README file. It will produce a structured compliance report identifying any missing sections, insufficient documentation, or policy violations. Instructions for installing and running the skill are in the repository README. This allows you to catch and fix issues before submitting to the Data Editor, saving both time and review cycles.
+
