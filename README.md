@@ -42,4 +42,7 @@ Submit replication packages to: <https://dataverse.harvard.edu/dataverse/cer>
 
 ## Contact
 
-Ruochen Dai, Data Editor, China Economic Review
+Ruochen Dai, 
+dairuochenpku@gmail.com,
+Associate Professor, Central University of Finance and Economics,
+Data Editor, China Economic Review
