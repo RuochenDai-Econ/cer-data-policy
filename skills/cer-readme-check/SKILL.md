@@ -187,12 +187,11 @@ Scan the README for these patterns. Any match is a critical failure:
 | H9 | Self-collected data Tier-2 without IRB | Default: share de-identified version. If not possible, document IRB + institutional contact. |
 | H10 | "Contact author for data" | Must direct to official institutional body, not author personally |
 | H11 | Pipeline gap | Any missing code or log between raw → intermediate → analysis → results |
-| H12 | No tier stated | README must explicitly state the data tier. The tier determines which checks apply: for Tier-1 and Tier-2, raw data provenance checks are especially critical. |
-| H13 | Intermediate data with no generation code | Any `.dta`/`.csv` file in the data folder that is used by the analysis but has no corresponding `.do` file (or other code) in the package that generates it. For every intermediate file, the README must state which code creates it from which raw source. This check is CRITICAL for Tier-1/Tier-2. |
+| H12 | Intermediate data with no generation code | Any `.dta`/`.csv` file in the data folder that is used by the analysis but has no corresponding `.do` file (or other code) in the package that generates it. For every intermediate file, the README must state which code creates it from which raw source. This check is CRITICAL for Tier-1/Tier-2. |
 
 ## Tier-Appropriate Expectations
 
-Adjust checks based on tier:
+The data tier is detected from the package contents and the tracking system — the README is NOT required to state it explicitly. Adjust checks based on the detected tier:
 
 - **No restricted data / Tier-0**: All raw data files should be in the package. Sections 1–8 all apply fully. Section 9 (access protocol) is N/A.
 - **Tier-1**: Raw data restricted but anonymized/intermediate data provided. Section 9 partially applies — document what is restricted and why. All other sections apply.
