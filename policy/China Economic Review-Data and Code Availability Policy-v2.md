@@ -266,3 +266,11 @@ Please see the separate [Frequently Asked Questions](faq.md) document for detail
 - University lab restricted data (Q13)
 
 ---
+
+## 9. Resources
+
+The latest version of this policy, the FAQ, and the CER self-check tools are maintained on GitHub:
+
+**Repository:** [github.com/RuochenDai-Econ/cer-data-policy](https://github.com/RuochenDai-Econ/cer-data-policy)
+
+---
