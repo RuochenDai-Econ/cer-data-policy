@@ -1,13 +1,13 @@
 ---
 description: |
-  Automatically verify a CER replication package by: (1) inspecting folder structure and file organization, (2) fixing absolute paths in code to use relative paths, (3) running the full replication pipeline, (4) comparing generated results and logs against the provided ones. Use when: checking if a replication package actually reproduces, verifying code runs end-to-end, pre-submission reproducibility audit, Data Editor verification workflow. Trigger phrases: "reproduce this package", "verify replication", "run the replication", "check reproducibility", "reproduce check", "run this replication package".
+  Automatically verify a CER replication package by: (1) inspecting folder structure and file organization, (2) scanning for absolute paths in code, (3) verifying code coherence and runnability WITHOUT re-running the pipeline (default), (4) checking that the provided logs and results are consistent with the code. A full pipeline re-run happens only when the editor explicitly asks. Use when: checking if a replication package actually reproduces, verifying code runs end-to-end, pre-submission reproducibility audit, Data Editor verification workflow. Trigger phrases: "reproduce this package", "verify replication", "run the replication", "check reproducibility", "reproduce check", "run this replication package".
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 user-invocable: true
 ---
 
 # CER Replication Package — Automated Reproduce Check
 
-Verify that a replication package runs end-to-end and produces results consistent with the provided outputs. Designed for the CER Data Editor's verification workflow but usable by authors for pre-submission self-checks.
+Verify that a replication package's code is coherent and would run with minimal manual intervention, and that the provided logs and results are consistent with the code. **By default the pipeline is NOT re-run**: the editor relies on the author-provided logs plus code inspection; a full re-run happens only when the editor explicitly asks for one (runtimes are long, restricted data/API keys are often missing, and the author's logs already demonstrate execution). Designed for the CER Data Editor's verification workflow but usable by authors for pre-submission self-checks.
 
 ## Workflow
 
@@ -111,7 +111,11 @@ For every data file (`.dta`, `.csv`, `.xlsx`) in the package, determine whether 
    - Does the README name the specific `.do` file that generates each intermediate file?
    - If the README says "from China Statistical Yearbook" but no code extracts/constructs the `.dta` from the yearbook, flag it.
 
-5. **Verify code location:**
+5. **The single most important finding: is there ANY raw→intermediate construction code?**
+   - If the package ships derived data files (e.g., tablewise/figurewise `.dta`) with **no upstream construction code at all**, that is a BLOCKING failure (H11/H12) — for Tier-1/Tier-2 especially. A blanket "intellectual property" or "confidentiality" justification for withholding the construction pipeline is NEVER an accepted waiver: **all code and all construction methods must be disclosed — no exceptions.** Published science is a contribution to knowledge, not a patent; "proprietary" scoring algorithms, network measures, and identifier crosswalks are all covered. A polished, self-verifying analysis layer does not compensate for a missing construction layer.
+   - Also verify the folder layer exists: no `public_raw_data/` / `restricted_raw_data/` / `raw_data_cleaning_program/` separation is itself a structural failure to report.
+
+6. **Verify code location:**
    - Data cleaning/generation code should be in the `raw_data/` folder (or equivalent), separate from analysis code.
    - If cleaning code is mixed with analysis code, flag as a structural issue.
 
@@ -184,79 +188,81 @@ List every file modified and the change made. This goes in the final report.
 
 ---
 
-### Phase 3: Run — Execute the Replication
+### Phase 3: Verify Code Coherence and Runnability (default — do NOT re-run)
 
-**3.1 Set up environment**
+**Default policy: no full pipeline re-run.** The editor verifies by inspection: the author's own logs already demonstrate that the code ran, and re-running costs 60–90+ minutes and often needs restricted data or API keys that are unavailable. A full re-run happens only when the editor explicitly asks.
 
-Based on detected software:
+**3.1 Code coherence — the pipeline hangs together**
 
-**Stata:**
+- **Master scripts:** does `main.do` exist, and does every do-file it calls actually exist on disk (exact name, incl. case)? List all files referenced by the master scripts and diff against the files present:
+  ```bash
+  # e.g. extract `do "..."` targets from main.do / main_clean.do and check each exists
+  grep -oE 'do "\$[a-zA-Z]+/[^"]+"' <master>.do | sed 's/do "//;s/"//' | while read -r p; do
+    [ -e "<pkg_root>/$p" ] || echo "MISSING: $p"
+  done
+  ```
+- **Dependency order:** does `main_clean.do` run construction steps in valid order (each step's inputs produced by earlier steps)? Trace the chain raw → intermediate → analysis → results.
+- **Data references resolve:** every `use` / `merge` / `import` path in the code points to a file present in the package, or to a documented restricted/downloadable source. Grep the do-files and check each path on disk.
+- **Output targets exist:** every `save` / `export` / `graph export` writes into a folder that exists (or is `capture mkdir`'d).
+
+**3.2 Easy runnability — minimal manual intervention**
+
+- **Single-edit root:** all paths go through one global macro (`$ROOT`) or are relative; zero absolute paths (Phase 2 covers the scan). Individual do-files should run standalone or define the fallback (`if "$ROOT" == "" global ROOT "."`).
+- **Packages:** README and/or master script list all required packages with install commands (`ssc install ...`); no unlisted dependencies.
+- **No hidden setup:** setup steps (edit config, download data, API keys) explicitly documented in README instructions.
+- **Version statement:** the code's `version` / software requirement matches the README.
+
+**3.3 Running code (ONLY with the editor's explicit request)**
+
+Never run anything on your own initiative. When the editor asks:
+
+- **Smoke test (fast):** run a tiny subset in a copy under `/tmp` — e.g. one exhibit do-file, or only the package-install block of `main.do` — to catch immediate failures.
+- **Full re-run:** work in a copy (`cp -r <pkg_root> /tmp/cer_reproduce_work/`), never in the original. Check the software is available and install the packages the README lists:
+
 ```bash
-# Check Stata is available
-which stata || which stata-se || which stata-mp
-# Install packages if needed (from README list)
-stata -b do setup_packages.do   # if provided
+which stata || which stata-se || which stata-mp   # Stata
+which R                                            # R
+which python3                                      # Python
 ```
 
-**R:**
+  Then run the master script from the package root, capturing a log:
+
 ```bash
-# Check R is available
-which R
-# Install packages from README list or renv
-R -e 'install.packages(c(...))'
-```
-
-**Python:**
-```bash
-which python3
-pip install -r requirements.txt  # if provided
-```
-
-**3.2 Run the master script**
-
-Execute from the package root:
-
-**Stata:**
-```bash
-cd <pkg_root> && stata -b do main.do
-```
-This produces `main.log`. If the master script is a different file, use that.
-
-**R:**
-```bash
+cd <pkg_root> && stata -b do main.do               # Stata → main.log
 cd <pkg_root> && Rscript main.R 2>&1 | tee reproduce.log
-```
-
-**Python:**
-```bash
 cd <pkg_root> && python3 main.py 2>&1 | tee reproduce.log
 ```
 
-**3.3 Capture results**
-
-After execution:
-- Note the **exit code** (0 = success, non-zero = error)
-- Capture the **console output** and save as `<pkg_root>/_cer_reproduce_output.log`
-- Check if expected output files were generated
-- Note any error messages, warnings, or missing dependencies
-
-**3.4 Handle failures**
-
-If the master script fails:
-- Read the error message
-- Determine if it's fixable (missing package, wrong software version) or fatal (missing data, broken code)
-- If fixable (e.g., `ssc install` needed), apply the fix and retry once
-- If fatal, document the error and skip Phase 4 comparison
+  Then go to Phase 4.4 and compare the generated outputs against the provided ones. For anything >30 minutes, always confirm with the editor first.
 
 ---
 
-### Phase 4: Compare — Results and Logs
+### Phase 4: Verify Provided Logs and Results Are Consistent with the Code
 
-Compare newly generated outputs against the provided ones.
+Compare the author-provided logs and results against the **code** (not against a new run). The generated-vs-provided diff in §4.4 applies only when a full re-run was requested and completed.
 
-**4.1 Compare log files**
+**4.1 Log completeness**
 
-If the package includes log files (`.log`, `.smcl`), compare against the newly generated log:
+- Every do-file must have a corresponding log (per-exhibit or per-step, plus the master log).
+- Each log ends cleanly: Stata `end of do-file` / `log close`, R no traceback, Python no `Traceback`.
+- Grep for errors — with care: Stata `r(###)` has false positives like `legend(r(1)...)` in graph options; always check the context line before flagging.
+
+**4.2 Log vs code consistency**
+
+- The sequence of executed do-files in the master log matches the call order in `main.do` (spot-check).
+- Key numbers in the logs are plausible against README claims: sample sizes (`Number of obs`), dataset dimensions, number of clusters.
+
+**4.3 Results vs code consistency**
+
+- For every exhibit in the README's script-to-output mapping, the output file exists in `results/` with the documented name and format.
+- Timestamps agree: result files and log `closed on` dates come from the same run.
+- Spot-check one or two numbers: a coefficient in `results/TableX` vs the same estimate printed in the corresponding log.
+
+**4.4 Generated-vs-provided comparison (only after a full re-run, if requested)**
+
+Compare newly generated outputs against the provided ones:
+
+**Compare log files**
 
 ```bash
 # Strip timestamps and runtime lines before comparing
@@ -279,7 +285,7 @@ Differences to IGNORE (normal):
 - `set seed` differences (if seed is fixed, this shouldn't happen)
 - File path differences (absolute vs relative)
 
-**4.2 Compare output files**
+**Compare output files**
 
 For each output file type:
 
@@ -313,7 +319,7 @@ diff /tmp/old_nums.txt /tmp/new_nums.txt
 - Compare file sizes (major difference may indicate issue)
 - Visual comparison is manual — flag as "requires manual check"
 
-**4.3 Classify discrepancies**
+**Classify discrepancies**
 
 | Type | Severity | Definition |
 |------|----------|------------|
@@ -371,29 +377,34 @@ Produce a structured verification report:
 ### No Changes Needed
 <list of files that were already relative>
 
-## Phase 3: Execution
+## Phase 3: Code Coherence & Runnability
 
-### Command
-```
-cd <pkg_root> && stata -b do main.do
-```
+### Coherence
+- Master scripts call only do-files that exist: <yes/no + missing list>
+- Dependency order valid: <yes/no>
+- All `use`/`save` paths resolve: <yes/no + unresolved list>
 
-### Result
-- **Exit code:** 0 / non-zero
-- **Runtime:** X minutes Y seconds
-- **Errors:** <none / details>
-- **Warnings:** <none / details>
+### Runnability
+- Single-edit root / relative paths: <yes/no>
+- Packages listed with install commands: <yes/no>
+- Setup steps documented: <yes/no>
+- Smoke test (if requested): <result>
 
-## Phase 4: Comparison
+## Phase 4: Log & Results Consistency (vs code)
 
-### Log File Comparison
-- Provided log: `results/main.log` (XX KB)
-- Generated log: `main.log` (XX KB)
-- **Result:** ✅ Match / ⚠️ Minor differences / ❌ Significant differences
+### Log completeness
+- Logs: X/X do-files covered; all end cleanly: <yes/no>; errors: <none / details>
 
-<If differences: list each difference with line numbers>
+### Log vs code
+- Executed sequence matches main.do: <yes/no>
+- Key Ns plausible vs README: <details>
 
-### Output File Comparison
+### Results vs code
+- All exhibits in README mapping present in results/: <yes/no + missing>
+- Timestamps consistent: <yes/no>
+- Spot-checked numbers match log: <details>
+
+### Generated-vs-provided (only if a full re-run was requested)
 | Output File | Provided | Generated | Status | Max Diff |
 |-------------|----------|-----------|--------|----------|
 | results/table1.xlsx | 15 KB | 15 KB | ✅ | 0 |
@@ -401,10 +412,11 @@ cd <pkg_root> && stata -b do main.do
 
 ## Summary
 
-- **Reproducibility:** ✅ Full / ⚠️ Partial / ❌ Failed
-- **Files matched:** X / Y
-- **Files differed:** X
-- **Files not generated:** X
+- **Structure/lineage:** ✅ / ⚠️ / ❌
+- **Portability:** ✅ / ⚠️ / ❌ (absolute paths? single-edit root?)
+- **Author's own run (logs):** ✅ complete / ❌ gaps — X/Y logs clean
+- **Reproducibility (inspected, not re-run):** ✅ expected to run / ⚠️ concerns
+- **Blocking issues:** <none / list>
 
 ## Recommended Actions
 <if any issues: specific fixes needed>
@@ -425,9 +437,8 @@ cd <pkg_root> && stata -b do main.do
 
 ## Important Notes
 
-- **Always check which software is installed** before running. If Stata is not available, report it and stop.
-- **Never overwrite original files.** Work in a copy: `cp -r <pkg_root> /tmp/cer_reproduce_work/`.
-- **Respect run time limits.** If README says 14 hours, warn the user before starting. For runs >30 minutes, ask user confirmation.
-- **Log everything.** Save all terminal output for the final report.
+- **Default: do NOT re-run the pipeline.** Verify by code inspection plus the author-provided logs (Phases 3–4). A full re-run happens only when the editor explicitly asks; for anything >30 minutes always confirm first.
+- **If a re-run IS requested:** work in a copy (`cp -r <pkg_root> /tmp/cer_reproduce_work/`), never overwrite originals; check the software is installed first (if not, report and stop); respect run-time limits; log everything.
+- **Restricted data in the package is normal for the editor's copy.** Authors send the editor complete packages (including restricted raw data) for verification; the README may state those files are not included because it describes the public package. Do not flag this as an issue — but do note in the report that the author must strip restricted files before Dataverse upload.
 - **For Tier-2 packages**: raw data is missing by design. The code should fail gracefully at the data-loading step — this is expected and should be noted, not flagged as an error.
 - **For packages without raw data**: skip the data-cleaning steps (they can't run), but check that the analysis code runs on provided intermediate data.

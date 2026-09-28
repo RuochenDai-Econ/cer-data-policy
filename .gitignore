@@ -1,0 +1,6 @@
+# Word / Office artifacts — documents are published as Markdown and PDF, not Word
+*.docx
+~$*
+
+# macOS
+.DS_Store

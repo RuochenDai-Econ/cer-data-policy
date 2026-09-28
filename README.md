@@ -6,7 +6,7 @@ The official data availability policy, replication package requirements, and ver
 
 ### Policy Documents (`/policy`)
 
-- **[CER Data and Code Availability Policy v2](policy/China%20Economic%20Review-Data%20and%20Code%20Availability%20Policy-v2.md)** — The complete policy document. Aligned with the [Data and Code Availability Standard (DCAS)](https://zenodo.org/communities/ssde/records) and the [SSDE Template README](https://social-science-data-editors.github.io/template_README/).
+- **[CER Data and Code Availability Policy v2.1](policy/China%20Economic%20Review-Data%20and%20Code%20Availability%20Policy-v2.1.md)** — The complete policy document. Aligned with the [Data and Code Availability Standard (DCAS)](https://zenodo.org/communities/ssde/records) and the [SSDE Template README](https://social-science-data-editors.github.io/template_README/).
 - **[Frequently Asked Questions](policy/faq.md)** — Detailed Q&A covering tier selection, CSMAR/WIND licenses, raw data definitions, DOI publishing timeline, and more.
 - **[CER Data and Code Availability Statement & Checklist](policy/4CER%20Data%20and%20Code%20Availability%20Statement%20%26%20Checklist.pdf)** — Mandatory compliance checklist for all CER submissions (PDF).
 
@@ -20,7 +20,7 @@ Check a README file against CER policy requirements. Produces a structured compl
 **Install:** Copy `skills/cer-readme-check/` to `~/.claude/skills/cer-readme-check/`
 
 #### `/cer-reproduce-check`
-Automated replication package verification: (1) inspect folder structure and file organization, (2) detect and fix absolute paths, (3) trace data lineage for each intermediate data file, (4) run the full replication pipeline, (5) compare generated results against provided outputs.
+Automated replication package verification: (1) inspect folder structure and file organization, (2) scan for absolute paths, (3) verify code coherence and runnability — by default **without** re-running the pipeline, (4) check that the provided logs and results are consistent with the code, and (5) trace the data lineage of each intermediate data file.
 
 **Install:** Copy `skills/cer-reproduce-check/` to `~/.claude/skills/cer-reproduce-check/`
 
